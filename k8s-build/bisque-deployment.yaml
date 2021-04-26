@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: bisque
+spec:
+    replicas: 1
+    selector:
+        matchLabels:
+            app: bisque
+    strategy:
+        type: RollingUpdate
+    template:
+        metadata:
+            labels:
+                app: bisque
+        spec:
+            tolerations:
+                -   key: "node.kubernetes.io/disk-pressure"
+                    operator: "Exists"
+                    effect: "NoSchedule"
+            containers:
+                -   name: bisque-dev
+                    imagePullPolicy: IfNotPresent
+                    image: amilworks/bisque05-amil-xenial:flour-v3
+                    ports:
+                        -   containerPort: 80
+                    volumeMounts:
+                        -   name: bisque-testing-data-pv
+                            mountPath: /var/run/bisque/data
+                        -   name: bisque-prod-data-pv
+                            mountPath: /var/run/bisque/production-data
+                        -   name: bisque-materials-pv
+                            mountPath: /cluster/materials
+                        -   name: bisque-brain-pv
+                            mountPath: /cluster/brain
+                    resources:
+                        limits:
+                            memory: 1Gi
+                        requests:
+                            memory: 500Mi
+                    env:
+                        - name: BISQUE_BISQUE_ADMIN_EMAIL
+                          value: "bisque-admin@biodev.ece.ucsb.edu"
+                        - name: BISQUE_BISQUE_BLOB_SERVICE_STORES
+                          value: "blobs,local,brain,materials"
+                        - name: BISQUE_BISQUE_STORES_BLOBS_MOUNTURL
+                          value: "file://$$datadir/blobdir/$$user/"
+                        - name: BISQUE_BISQUE_STORES_BLOBS_TOP
+                          value: "file://$$datadir/blobdir/"
+                        - name: BISQUE_BISQUE_STORES_BRAIN_MOUNTURL
+                          value: "file:///cluster/brain/"
+                        - name: BISQUE_BISQUE_STORES_BRAIN_READONLY
+                          value: "true"
+                        - name: BISQUE_BISQUE_STORES_LOCAL_MOUNTURL
+                          value: "file://$$datadir/imagedir/$$user/"
+                        - name: BISQUE_BISQUE_STORES_LOCAL_READONLY
+                          value: "true"
+                        - name: BISQUE_BISQUE_STORES_LOCAL_TOP
+                          value: "file://$$datadir/imagedir/"
+                        - name: BISQUE_BISQUE_STORES_MATERIALS_MOUNTURL
+                          value: "file:///cluster/materials/"
+                        - name: BISQUE_BISQUE_STORES_MATERIALS_READONLY
+                          value: "true"
+                        - name: BISQUE_DBURL
+                          value: "postgresql://bisque:bisque22@croze.cs.ucsb.edu:5432/bq059testing"
+                        - name: BISQUE_DOCKER_DOCKER_HUB
+                          value: "biodev.ece.ucsb.edu:5000"
+                        - name: BISQUE_RUNTIME_STAGING_BASE
+                          value: "/run/bisque/data/staging"
+                        - name: BISQUE_SECRET
+                          value: "bq123"
+                        - name: BISQUE_UID
+                          value: "1000"
+                        - name: BQ__BISQUE__PATHS__DATA
+                          value: "/run/bisque/data"
+                        - name: BQ__BISQUE__IMAGE_SERVICE__WORK_DIR
+                          value: "/run/bisque/local/workdir"
+                        - name: CONDOR_DAEMONS
+                          value: "MASTER,SCHEDD,SHARED_PORT"
+                        - name: CONDOR_MANAGER_HOST
+                          value: "master"
+                        - name: MAIL_SERVER
+                          value: "dough.ece.ucsb.edu"
+            volumes:
+                -   name: bisque-testing-data-pv
+                    persistentVolumeClaim:
+                        claimName: bisque-testing-data-pvc
+                -   name: bisque-prod-data-pv
+                    persistentVolumeClaim:
+                        claimName: bisque-prod-data-pvc
+                -   name: bisque-brain-pv
+                    persistentVolumeClaim:
+                        claimName: bisque-brain-pvc
+                -   name: bisque-materials-pv
+                    persistentVolumeClaim:
+                        claimName: bisque-materials-pvc
